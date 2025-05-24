@@ -1,0 +1,545 @@
+<!DOCTYPE html>
+<html lang="en" class="scroll-smooth">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kintsugi-Inspired Plate Restoration</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            color: #333; /* Default text color */
+        }
+
+        /* Smooth scroll compatibility */
+        html {
+            scroll-behavior: smooth;
+        }
+
+        /* Hero section overlay */
+        .hero-overlay::before {
+            content: "";
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: rgba(0, 0, 0, 0.5); /* Dark overlay */
+            z-index: 1;
+        }
+
+        .hero-content {
+            position: relative;
+            z-index: 2;
+        }
+
+        /* Before-After Slider Styles */
+        .before-after-slider {
+            position: relative;
+            width: 100%;
+            max-width: 500px; /* Adjust as needed */
+            margin: 2rem auto;
+            border-radius: 0.5rem; /* Tailwind: rounded-lg */
+            box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1), 0 4px 6px -2px rgba(0,0,0,0.05); /* Tailwind: shadow-lg */
+            aspect-ratio: 1 / 1; /* For a square plate, adjust if needed */
+            overflow: hidden; /* Important for object-fit to work well with border-radius */
+        }
+
+        .before-after-slider .img-before,
+        .before-after-slider .img-after-wrapper img {
+            display: block;
+            width: 100%;
+            height: 100%;
+            object-fit: cover; /* Ensures images cover the area, might crop */
+            border-radius: 0.5rem; /* Consistent rounding */
+        }
+
+        .before-after-slider .img-before {
+            position: relative; /* Establishes stacking context */
+        }
+
+        .before-after-slider .img-after-wrapper {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 50%; /* Initial position of the slider handle */
+            height: 100%;
+            overflow: hidden; /* This is what creates the sliding effect */
+            border-right: 3px solid white; /* The draggable divider line */
+            box-sizing: border-box;
+            z-index: 1; /* On top of the 'before' image */
+        }
+        
+        /* The image inside the wrapper needs to be as wide as the main container */
+        .before-after-slider .img-after-wrapper img {
+           position: absolute;
+           top: 0;
+           left: 0;
+           width: var(--container-width); /* Set by JS to match parent width */
+           height: 100%; /* Match parent height */
+        }
+
+
+        .before-after-slider input[type="range"] {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            margin: 0;
+            opacity: 0; /* Make it invisible but interactive */
+            cursor: ew-resize;
+            z-index: 2; /* On top of everything else for interaction */
+        }
+
+        /* Lightbox Styles */
+        .lightbox-modal {
+            display: none; /* Hidden by default */
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            overflow: auto;
+            background-color: rgba(0,0,0,0.85);
+            justify-content: center;
+            align-items: center;
+        }
+        .lightbox-modal.active {
+            display: flex; /* Show when active */
+        }
+        .lightbox-content {
+            margin: auto;
+            display: block;
+            max-width: 85%;
+            max-height: 85%;
+            border-radius: 0.5rem;
+            animation: zoomIn 0.3s ease-out;
+        }
+        .lightbox-close {
+            position: absolute;
+            top: 20px;
+            right: 35px;
+            color: #f1f1f1;
+            font-size: 40px;
+            font-weight: bold;
+            transition: 0.3s;
+            cursor: pointer;
+            line-height: 1;
+        }
+        .lightbox-close:hover,
+        .lightbox-close:focus {
+            color: #bbb;
+            text-decoration: none;
+        }
+
+        @keyframes zoomIn {
+            from {transform: scale(0.8); opacity: 0;}
+            to {transform: scale(1); opacity: 1;}
+        }
+
+        /* Section spacing */
+        section {
+            padding-top: 4rem; /* Equivalent to pt-16 */
+            padding-bottom: 4rem; /* Equivalent to pb-16 */
+            margin-top: -2.5rem; /* Negative margin to align with nav height if nav is sticky and has height */
+            padding-top: 4.5rem; /* Adjusted padding top to account for negative margin */
+        }
+        /* First section doesn't need negative top margin */
+        main > section:first-child {
+            margin-top: 0;
+            padding-top: 4rem;
+        }
+        /* Adjust anchor scroll position due to sticky nav */
+        section[id]::before {
+            content: "";
+            display: block;
+            height: 80px; /* Adjust this value to match your sticky nav's height */
+            margin-top: -80px; /* Negative margin to offset the height */
+            visibility: hidden;
+        }
+
+
+    </style>
+</head>
+<body class="bg-gray-50 text-gray-800">
+
+    <nav class="sticky top-0 z-50 bg-white shadow-lg">
+        <div class="container mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex items-center justify-between h-16">
+                <div class="flex-shrink-0">
+                    <a href="#" class="text-2xl font-bold text-amber-600">Kintsugi</a>
+                </div>
+                <div class="hidden md:block">
+                    <div class="ml-10 flex items-baseline space-x-4">
+                        <a href="#about" class="text-gray-600 hover:bg-amber-500 hover:text-white px-3 py-2 rounded-md text-sm font-medium">About</a>
+                        <a href="#history" class="text-gray-600 hover:bg-amber-500 hover:text-white px-3 py-2 rounded-md text-sm font-medium">History</a>
+                        <a href="#examples" class="text-gray-600 hover:bg-amber-500 hover:text-white px-3 py-2 rounded-md text-sm font-medium">Examples</a>
+                        <a href="#ourproject" class="text-gray-600 hover:bg-amber-500 hover:text-white px-3 py-2 rounded-md text-sm font-medium">Our Project</a>
+                        <a href="#steps" class="text-gray-600 hover:bg-amber-500 hover:text-white px-3 py-2 rounded-md text-sm font-medium">Steps</a>
+                        <a href="#supplies" class="text-gray-600 hover:bg-amber-500 hover:text-white px-3 py-2 rounded-md text-sm font-medium">Supplies</a>
+                        <a href="#timing" class="text-gray-600 hover:bg-amber-500 hover:text-white px-3 py-2 rounded-md text-sm font-medium">Timing</a>
+                    </div>
+                </div>
+                <div class="md:hidden">
+                    <button id="mobile-menu-button" class="inline-flex items-center justify-center p-2 rounded-md text-gray-500 hover:text-amber-600 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-amber-500">
+                        <span class="sr-only">Open main menu</span>
+                        <svg class="block h-6 w-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
+                        </svg>
+                        <svg class="hidden h-6 w-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                    </button>
+                </div>
+            </div>
+        </div>
+        <div class="md:hidden hidden" id="mobile-menu">
+            <div class="px-2 pt-2 pb-3 space-y-1 sm:px-3">
+                <a href="#about" class="text-gray-600 hover:bg-amber-500 hover:text-white block px-3 py-2 rounded-md text-base font-medium">About</a>
+                <a href="#history" class="text-gray-600 hover:bg-amber-500 hover:text-white block px-3 py-2 rounded-md text-base font-medium">History</a>
+                <a href="#examples" class="text-gray-600 hover:bg-amber-500 hover:text-white block px-3 py-2 rounded-md text-base font-medium">Examples</a>
+                <a href="#ourproject" class="text-gray-600 hover:bg-amber-500 hover:text-white block px-3 py-2 rounded-md text-base font-medium">Our Project</a>
+                <a href="#steps" class="text-gray-600 hover:bg-amber-500 hover:text-white block px-3 py-2 rounded-md text-base font-medium">Steps</a>
+                <a href="#supplies" class="text-gray-600 hover:bg-amber-500 hover:text-white block px-3 py-2 rounded-md text-base font-medium">Supplies</a>
+                <a href="#timing" class="text-gray-600 hover:bg-amber-500 hover:text-white block px-3 py-2 rounded-md text-base font-medium">Timing</a>
+            </div>
+        </div>
+    </nav>
+
+    <header class="relative hero-overlay bg-cover bg-center py-24 md:py-32 lg:py-40" style="background-image: url('https://images.unsplash.com/photo-1531685250784-7569952593d2?auto=format&fit=crop&w=1974&q=80');">
+        <div class="container mx-auto px-4 sm:px-6 lg:px-8 text-center hero-content">
+            <h1 class="text-4xl sm:text-5xl md:text-6xl font-extrabold text-white leading-tight">
+                Kintsugi-Inspired <span class="block sm:inline text-amber-400">Plate Restoration</span>
+            </h1>
+            <p class="mt-6 text-lg sm:text-xl text-gray-200 max-w-2xl mx-auto">
+                Embracing imperfection and celebrating repair as part of an object's unique history.
+            </p>
+        </div>
+    </header>
+
+    <main class="container mx-auto p-4 md:p-8 space-y-16">
+        <section id="about" aria-labelledby="about-heading" class="bg-white p-6 sm:p-8 rounded-xl shadow-lg">
+            <h2 id="about-heading" class="text-3xl font-bold text-amber-600 mb-6 text-center">What is Kintsugi?</h2>
+            <div class="prose prose-lg max-w-none text-gray-700 text-justify">
+                <p>Kintsugi (金継ぎ, "golden joinery"), also known as Kintsukuroi (金繕い, "golden repair"), is the Japanese art of repairing broken pottery by mending the areas of breakage with lacquer dusted or mixed with powdered gold, silver, or platinum. It treats breakage and repair as part of the history of an object, rather than something to disguise. The philosophy highlights the beauty in imperfection, transforming a damaged piece into something new and often more valuable.</p>
+            </div>
+        </section>
+
+        <section id="history" aria-labelledby="history-heading" class="bg-white p-6 sm:p-8 rounded-xl shadow-lg">
+            <h2 id="history-heading" class="text-3xl font-bold text-amber-600 mb-6 text-center">History & Wabi-Sabi</h2>
+            <div class="prose prose-lg max-w-none text-gray-700 text-justify">
+                <p>Kintsugi is said to have originated in the late 15th century when Japanese shogun Ashikaga Yoshimasa sent a damaged Chinese tea bowl back to China for repairs. When it returned mended with unsightly metal staples, Japanese craftsmen sought a more aesthetically pleasing method of repair, giving birth to Kintsugi.</p>
+                <p>This art form is deeply connected to the Japanese philosophy of <strong class="text-amber-700">wabi-sabi</strong>, which embraces the flawed or imperfect. Kintsugi doesn't just fix an object; it celebrates its scars as a unique part of its journey, often making the repaired piece more beautiful and resilient than before.</p>
+            </div>
+        </section>
+
+        <section id="examples" aria-labelledby="examples-heading" class="bg-white p-6 sm:p-8 rounded-xl shadow-lg">
+            <h2 id="examples-heading" class="text-3xl font-bold text-amber-600 mb-6 text-center">Examples & Further Reading</h2>
+            <p class="text-center text-gray-600 mb-6">Explore more about this fascinating art form:</p>
+            <ul class="list-disc list-inside space-y-3 text-lg text-gray-700 max-w-md mx-auto">
+                <li><a href="https://en.wikipedia.org/wiki/Kintsugi" target="_blank" rel="noopener noreferrer" class="text-blue-600 hover:text-blue-800 hover:underline">Kintsugi on Wikipedia</a> - Comprehensive overview and history.</li>
+                <li><a href="https://www.thecollector.com/kintsugi-japanese-art-of-golden-repair/" target="_blank" rel="noopener noreferrer" class="text-blue-600 hover:text-blue-800 hover:underline">The Collector: Kintsugi, The Japanese Art Of Golden Repair</a> - Beautiful examples and context.</li>
+                <li><a href="https://www.smithsonianmag.com/arts-culture/kintsugi-ceramics-art-of-repairing-broken-pottery-lacquer-180968699/" target="_blank" rel="noopener noreferrer" class="text-blue-600 hover:text-blue-800 hover:underline">Smithsonian Magazine: The Art of Repairing Broken Pottery with Gold</a> - Insights into the craft and philosophy.</li>
+            </ul>
+        </section>
+
+        <section id="ourproject" aria-labelledby="ourproject-heading" class="bg-white p-6 sm:p-8 rounded-xl shadow-lg">
+            <h2 id="ourproject-heading" class="text-3xl font-bold text-amber-600 mb-6 text-center">Our Project: Aunt Bev's Plate</h2>
+            <div class="prose prose-lg max-w-none text-gray-700 mb-8 text-justify">
+                <p>This project is inspired by a real-life mishap with a cherished family item. My Aunt Bev has a beautiful Talavera plate, a treasured souvenir from a memorable trip to Mexico. One fateful day, it slipped and tragically broke into four distinct pieces. Heartbroken but determined not to discard such a meaningful piece, we decided to embrace the Kintsugi philosophy and give it a new life, highlighting its history rather than hiding the damage.</p>
+                <p>Below, you can see the transformation of Aunt Bev's plate from its broken state to its beautifully restored form, where the golden seams tell a new story of resilience.</p>
+                </div>
+            <div class="before-after-slider">
+                <img class="img-before" src="images/broken_plate.jpg" alt="Aunt Bev's broken Talavera plate before Kintsugi repair" 
+                     onerror="this.onerror=null; this.src='https://placehold.co/500x500/E0E0E0/B0B0B0?text=Broken+Plate+(Missing)'; this.alt='Placeholder for broken plate image';">
+                <div class="img-after-wrapper">
+                    <img src="images/step7.jpg" alt="Aunt Bev's Talavera plate after Kintsugi-inspired repair with golden seams"
+                         onerror="this.onerror=null; this.src='https://placehold.co/500x500/E0E0E0/B0B0B0?text=Restored+Plate+(Missing)'; this.alt='Placeholder for restored plate image';">
+                </div>
+                <input type="range" min="0" max="100" value="50" aria-label="Compare before and after images">
+            </div>
+             <p class="text-center text-sm text-gray-500 mt-2">Move the slider to see the before and after.</p>
+        </section>
+
+        <section id="steps" aria-labelledby="steps-heading" class="bg-gray-100 p-6 sm:p-8 rounded-xl shadow-inner">
+            <h2 id="steps-heading" class="text-3xl font-bold text-amber-600 mb-8 text-center">The Repair Steps</h2>
+            <ol class="space-y-10">
+                <li class="flex flex-col md:flex-row items-center gap-6 bg-white p-6 rounded-lg shadow-md">
+                    <div class="md:w-1/3 flex-shrink-0">
+                        <a href="images/step1.jpg" class="lightbox-trigger">
+                            <img src="images/step1.jpg" alt="Step 1 & 2: Dry fitting the broken plate pieces and cleaning edges" class="rounded-lg shadow-sm w-full h-auto object-cover cursor-pointer hover:opacity-80 transition-opacity"
+                                 onerror="this.onerror=null; this.src='https://placehold.co/300x300/E0E0E0/B0B0B0?text=Step+1-2+(Missing)'; this.alt='Placeholder for step 1-2 image';">
+                        </a>
+                    </div>
+                    <div class="md:w-2/3">
+                        <h3 class="text-xl font-semibold text-amber-700 mb-2">1 & 2. Dry Fit & Clean Edges</h3>
+                        <p class="text-gray-700">Carefully dry-fit the broken pieces to understand how they align, then thoroughly clean all broken edges with rubbing alcohol to ensure a strong bond.</p>
+                    </div>
+                </li>
+                <li class="flex flex-col md:flex-row items-center gap-6 bg-white p-6 rounded-lg shadow-md">
+                    <div class="md:w-1/3 flex-shrink-0">
+                        <a href="images/step3.jpg" class="lightbox-trigger">
+                            <img src="images/step3.jpg" alt="Step 3: Mixing epoxy resin with gold mica powder" class="rounded-lg shadow-sm w-full h-auto object-cover cursor-pointer hover:opacity-80 transition-opacity"
+                                 onerror="this.onerror=null; this.src='https://placehold.co/300x300/E0E0E0/B0B0B0?text=Step+3+(Missing)'; this.alt='Placeholder for step 3 image';">
+                        </a>
+                    </div>
+                    <div class="md:w-2/3">
+                        <h3 class="text-xl font-semibold text-amber-700 mb-2">3. Mix Epoxy & Gold Powder</h3>
+                        <p class="text-gray-700">Prepare your adhesive by mixing a strong epoxy resin with gold mica powder according to the epoxy's instructions, achieving a consistent golden paste.</p>
+                    </div>
+                </li>
+                <li class="flex flex-col md:flex-row items-center gap-6 bg-white p-6 rounded-lg shadow-md">
+                    <div class="md:w-1/3 flex-shrink-0">
+                        <a href="images/step4.jpg" class="lightbox-trigger">
+                            <img src="images/step4.jpg" alt="Step 4: Applying gold epoxy and joining the first large piece of the plate" class="rounded-lg shadow-sm w-full h-auto object-cover cursor-pointer hover:opacity-80 transition-opacity"
+                                 onerror="this.onerror=null; this.src='https://placehold.co/300x300/E0E0E0/B0B0B0?text=Step+4+(Missing)'; this.alt='Placeholder for step 4 image';">
+                        </a>
+                    </div>
+                    <div class="md:w-2/3">
+                        <h3 class="text-xl font-semibold text-amber-700 mb-2">4. Apply Epoxy & Join First Piece</h3>
+                        <p class="text-gray-700">Apply a thin, even layer of the gold epoxy mixture to the edges of one of the larger broken pieces and carefully join it to its corresponding part.</p>
+                    </div>
+                </li>
+                <li class="flex flex-col md:flex-row items-center gap-6 bg-white p-6 rounded-lg shadow-md">
+                    <div class="md:w-1/3 flex-shrink-0">
+                        <a href="images/step5.jpg" class="lightbox-trigger">
+                            <img src="images/step5.jpg" alt="Step 5: Continuing to join plate fragments, including a thin sliver, with gold epoxy" class="rounded-lg shadow-sm w-full h-auto object-cover cursor-pointer hover:opacity-80 transition-opacity"
+                                 onerror="this.onerror=null; this.src='https://placehold.co/300x300/E0E0E0/B0B0B0?text=Step+5+(Missing)'; this.alt='Placeholder for step 5 image';">
+                        </a>
+                    </div>
+                    <div class="md:w-2/3">
+                        <h3 class="text-xl font-semibold text-amber-700 mb-2">5. Join Remaining Pieces</h3>
+                        <p class="text-gray-700">Systematically continue applying epoxy and joining the remaining fragments, including any small slivers, using masking tape to hold pieces if needed.</p>
+                    </div>
+                </li>
+                <li class="flex flex-col md:flex-row items-center gap-6 bg-white p-6 rounded-lg shadow-md">
+                    <div class="md:w-1/3 flex-shrink-0">
+                        <a href="images/step6.jpg" class="lightbox-trigger">
+                             <img src="images/step6.jpg" alt="Step 6: The repaired plate curing for 24 hours, supported and undisturbed" class="rounded-lg shadow-sm w-full h-auto object-cover cursor-pointer hover:opacity-80 transition-opacity"
+                                 onerror="this.onerror=null; this.src='https://placehold.co/300x300/E0E0E0/B0B0B0?text=Step+6+(Missing)'; this.alt='Placeholder for step 6 image';">
+                        </a>
+                    </div>
+                    <div class="md:w-2/3">
+                        <h3 class="text-xl font-semibold text-amber-700 mb-2">6. Allow Full Cure</h3>
+                        <p class="text-gray-700">Once all pieces are assembled, allow the epoxy to cure completely as per the manufacturer's instructions (typically 24 hours), ensuring the plate is undisturbed.</p>
+                    </div>
+                </li>
+                <li class="flex flex-col md:flex-row items-center gap-6 bg-white p-6 rounded-lg shadow-md">
+                    <div class="md:w-1/3 flex-shrink-0">
+                        <a href="images/step7.jpg" class="lightbox-trigger">
+                            <img src="images/step7.jpg" alt="Step 7: Highlighting the golden seams of the repaired plate with a fine brush and varnish" class="rounded-lg shadow-sm w-full h-auto object-cover cursor-pointer hover:opacity-80 transition-opacity"
+                                 onerror="this.onerror=null; this.src='https://placehold.co/300x300/E0E0E0/B0B0B0?text=Step+7+(Missing)'; this.alt='Placeholder for step 7 image';">
+                        </a>
+                    </div>
+                    <div class="md:w-2/3">
+                        <h3 class="text-xl font-semibold text-amber-700 mb-2">7. Highlight Seams & Varnish (Optional)</h3>
+                        <p class="text-gray-700">After full curing, you can further highlight the golden seams with more gold powder mixed with varnish, or simply apply a clear varnish for protection.</p>
+                    </div>
+                </li>
+            </ol>
+        </section>
+
+        <section id="supplies" aria-labelledby="supplies-heading" class="bg-white p-6 sm:p-8 rounded-xl shadow-lg">
+            <h2 id="supplies-heading" class="text-3xl font-bold text-amber-600 mb-6 text-center">Tools & Materials</h2>
+            <div class="grid md:grid-cols-2 gap-x-8 gap-y-4">
+                <ul class="list-disc list-inside space-y-2 text-gray-700 text-lg">
+                    <li>Broken ceramic item</li>
+                    <li>Strong epoxy resin (clear, slow-setting recommended)</li>
+                    <li>Gold mica powder (or other metallic powder)</li>
+                    <li>Mixing sticks</li>
+                    <li>Small disposable mixing cups or surfaces</li>
+                    <li>Masking tape</li>
+                </ul>
+                <ul class="list-disc list-inside space-y-2 text-gray-700 text-lg">
+                    <li>Rubbing alcohol or acetone for cleaning</li>
+                    <li>Paper towels or soft cloths</li>
+                    <li>Disposable gloves</li>
+                    <li>Fine paintbrush (optional, for highlighting)</li>
+                    <li>Clear varnish (optional, for sealing)</li>
+                    <li>Safety glasses</li>
+                </ul>
+            </div>
+        </section>
+
+        <section id="timing" aria-labelledby="timing-heading" class="bg-gray-100 p-6 sm:p-8 rounded-xl shadow-inner">
+            <h2 id="timing-heading" class="text-3xl font-bold text-amber-600 mb-8 text-center">Project Timing</h2>
+            <div class="overflow-x-auto">
+                <table class="min-w-full divide-y divide-gray-300 rounded-lg shadow-md">
+                    <thead class="bg-amber-500 text-white">
+                        <tr>
+                            <th scope="col" class="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider sm:text-sm">Step</th>
+                            <th scope="col" class="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider sm:text-sm">Active Time</th>
+                            <th scope="col" class="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider sm:text-sm">Passive Time (Drying/Curing)</th>
+                        </tr>
+                    </thead>
+                    <tbody class="bg-white divide-y divide-gray-200">
+                        <tr>
+                            <td class="px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-900">1. Dry Fit Pieces & Plan Repair</td>
+                            <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-600">10-20 minutes</td>
+                            <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-600">-</td>
+                        </tr>
+                        <tr>
+                            <td class="px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-900">2. Clean Broken Edges</td>
+                            <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-600">10-15 minutes</td>
+                            <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-600">-</td>
+                        </tr>
+                        <tr>
+                            <td class="px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-900">3. Mix Epoxy and Gold Powder</td>
+                            <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-600">5 minutes</td>
+                            <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-600">Pot life (e.g., 5-30 mins)</td>
+                        </tr>
+                        <tr>
+                            <td class="px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-900">4. Apply Epoxy & Join First Piece</td>
+                            <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-600">10-15 minutes</td>
+                            <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-600">Initial set (e.g., 5-10 mins)</td>
+                        </tr>
+                        <tr>
+                            <td class="px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-900">5. Continue Joining Remaining Pieces</td>
+                            <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-600">20-40 minutes</td>
+                            <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-600">-</td>
+                        </tr>
+                        <tr>
+                            <td class="px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-900">6. Full Cure</td>
+                            <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-600">Minimal (set aside)</td>
+                            <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-600">24 hours</td>
+                        </tr>
+                        <tr>
+                            <td class="px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-900">7. Highlight Seams & Varnish (Optional)</td>
+                            <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-600">15-30 minutes</td>
+                            <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-600">Varnish dry (e.g., 1-2 hrs)</td>
+                        </tr>
+                    </tbody>
+                    <tfoot class="bg-amber-100">
+                        <tr>
+                            <td class="px-4 py-3 text-sm font-bold text-amber-700">TOTALS (Approximate)</td>
+                            <td class="px-4 py-3 text-sm font-bold text-amber-700">1 hr 10 min - 2 hrs</td>
+                            <td class="px-4 py-3 text-sm font-bold text-amber-700">~25-27 hours + pot life</td>
+                        </tr>
+                    </tfoot>
+                </table>
+            </div>
+             <p class="text-center text-sm text-gray-500 mt-4">Note: Times are estimates and can vary based on epoxy type, complexity, and ambient conditions.</p>
+        </section>
+    </main>
+
+    <div id="lightbox" class="lightbox-modal">
+        <span class="lightbox-close" aria-label="Close image viewer">&times;</span>
+        <img class="lightbox-content" id="lightbox-img" src="#" alt="Enlarged view of repair step">
+    </div>
+
+    <footer class="bg-gray-800 text-white py-8 text-center">
+        <p>&copy; <span id="currentYear"></span> Kintsugi-Inspired Restoration Project. Embrace the beauty of imperfection.</p>
+    </footer>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            // Mobile Menu Toggle
+            const menuButton = document.getElementById('mobile-menu-button');
+            const mobileMenu = document.getElementById('mobile-menu');
+            if (menuButton && mobileMenu) {
+                menuButton.addEventListener('click', () => {
+                    mobileMenu.classList.toggle('hidden');
+                    // Toggle SVG icon
+                    menuButton.querySelectorAll('svg').forEach(svg => svg.classList.toggle('hidden'));
+                });
+                // Close mobile menu when a link is clicked
+                mobileMenu.querySelectorAll('a').forEach(link => {
+                    link.addEventListener('click', () => {
+                        mobileMenu.classList.add('hidden');
+                        menuButton.querySelectorAll('svg').forEach(svg => svg.classList.toggle('hidden'));
+                    });
+                });
+            }
+
+            // Smooth Scroll for Nav Links (already handled by html class scroll-smooth and CSS for offset)
+            // However, direct JS can be more precise with fixed headers.
+            const navHeight = document.querySelector('nav').offsetHeight;
+            document.querySelectorAll('nav a[href^="#"]').forEach(anchor => {
+                anchor.addEventListener('click', function (e) {
+                    e.preventDefault();
+                    const targetId = this.getAttribute('href');
+                    const targetElement = document.querySelector(targetId);
+                    if (targetElement) {
+                        const elementPosition = targetElement.getBoundingClientRect().top;
+                        const offsetPosition = elementPosition + window.pageYOffset - navHeight;
+                        
+                        window.scrollTo({
+                            top: offsetPosition,
+                            behavior: "smooth"
+                        });
+                    }
+                });
+            });
+
+
+            // Before-After Slider
+            const sliderContainer = document.querySelector('.before-after-slider');
+            if (sliderContainer) {
+                const sliderInput = sliderContainer.querySelector('input[type="range"]');
+                const afterWrapper = sliderContainer.querySelector('.img-after-wrapper');
+                const afterImage = afterWrapper.querySelector('img');
+
+                function setAfterImageWidth() {
+                    const containerWidth = sliderContainer.offsetWidth;
+                    afterImage.style.setProperty('--container-width', containerWidth + 'px');
+                }
+
+                if (sliderInput && afterWrapper && afterImage) {
+                    setAfterImageWidth(); // Initial set
+
+                    sliderInput.addEventListener('input', (e) => {
+                        afterWrapper.style.width = e.target.value + '%';
+                    });
+
+                    // Update image width on resize for responsiveness
+                    window.addEventListener('resize', setAfterImageWidth);
+                }
+            }
+
+
+            // Lightbox Functionality
+            const lightbox = document.getElementById('lightbox');
+            const lightboxImg = document.getElementById('lightbox-img');
+            const closeLightboxBtn = document.querySelector('.lightbox-close');
+
+            if (lightbox && lightboxImg && closeLightboxBtn) {
+                document.querySelectorAll('.lightbox-trigger').forEach(trigger => {
+                    trigger.addEventListener('click', function(e) {
+                        e.preventDefault();
+                        lightboxImg.src = this.href; // href should be path to full image
+                        lightbox.classList.add('active');
+                        document.body.style.overflow = 'hidden'; // Prevent scrolling background
+                    });
+                });
+
+                function closeLightbox() {
+                    lightbox.classList.remove('active');
+                    document.body.style.overflow = ''; // Restore scrolling
+                }
+
+                closeLightboxBtn.addEventListener('click', closeLightbox);
+                lightbox.addEventListener('click', (e) => { // Close on clicking background
+                    if (e.target === lightbox) {
+                        closeLightbox();
+                    }
+                });
+                document.addEventListener('keydown', (e) => { // Close with Escape key
+                    if (e.key === "Escape" && lightbox.classList.contains('active')) {
+                        closeLightbox();
+                    }
+                });
+            }
+
+            // Footer Current Year
+            const yearSpan = document.getElementById('currentYear');
+            if (yearSpan) {
+                yearSpan.textContent = new Date().getFullYear();
+            }
+        });
+    </script>
+
+</body>
+</html>
